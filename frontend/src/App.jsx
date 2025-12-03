@@ -1,5 +1,5 @@
-import Navbar from './  components/Navbar'
 import { Routes, Route } from 'react-router-dom'
+import Navbar from './components/Navbar'
 import HomePage from './pages/HomePage'
 import SignUpPage from './pages/SignUpPage'
 import LoginPage from './pages/LoginPage'
@@ -8,6 +8,7 @@ import ProfilePage from './pages/ProfilePage'
 import { useEffect } from 'react'
 import { useAuthStore } from './store/useAuthStore'
 import { Loader } from 'lucide-react'
+import { Navigate } from 'react-router-dom'
 
 
 const App = () => {
