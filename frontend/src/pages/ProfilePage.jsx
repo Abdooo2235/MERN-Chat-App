@@ -30,16 +30,16 @@ const ProfilePage = () => {
     <div className="h-screen pt-20">
       <div className="max-w-2xl mx-auto p-4 py-8">
         <div className="bg-base-300 rounded-xl p-6 space-y-8">
-          {/* Back Button */}
-          <div className="flex items-center gap-2">
-            <Link
-              to="/"
-              className="btn btn-sm btn-circle btn-ghost hover:bg-base-100"
-            >
+          {/* Back Button - Fully Clickable */}
+          <Link
+            to="/"
+            className="flex items-center gap-2 w-fit hover:opacity-70 transition-all duration-200 hover:-translate-x-0.5 cursor-pointer"
+          >
+            <div className="btn btn-sm btn-circle btn-ghost">
               <ArrowLeft className="w-5 h-5" />
-            </Link>
+            </div>
             <h2 className="text-lg font-semibold">Back to Chat</h2>
-          </div>
+          </Link>
 
           <div className="text-center">
             <h1 className="text-2xl font-semibold ">Profile</h1>

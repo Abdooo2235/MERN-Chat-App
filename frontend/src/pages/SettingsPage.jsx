@@ -14,16 +14,16 @@ const SettingsPage = () => {
   return (
     <div className="h-screen container mx-auto px-4 pt-20 max-w-5xl">
       <div className="space-y-6">
-        {/* Back Button */}
-        <div className="flex items-center gap-2">
-          <Link
-            to="/"
-            className="btn btn-sm btn-circle btn-ghost hover:bg-base-100"
-          >
+        {/* Back Button - Fully Clickable */}
+        <Link
+          to="/"
+          className="flex items-center gap-2 w-fit hover:opacity-70 transition-all duration-200 hover:-translate-x-0.5 cursor-pointer"
+        >
+          <div className="btn btn-sm btn-circle btn-ghost">
             <ArrowLeft className="w-5 h-5" />
-          </Link>
+          </div>
           <h2 className="text-lg font-semibold">Back to Chat</h2>
-        </div>
+        </Link>
 
         <div className="flex flex-col gap-1">
           <h2 className="text-lg font-semibold">Theme</h2>
