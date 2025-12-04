@@ -12,7 +12,7 @@ const SettingsPage = () => {
   const { theme, setTheme } = useThemeStore();
 
   return (
-    <div className="h-screen container mx-auto px-4 pt-20 max-w-5xl">
+    <div className="min-h-screen bg-base-200 container mx-auto px-4 pt-20 pb-8 max-w-5xl">
       <div className="space-y-6">
         {/* Back Button - Fully Clickable */}
         <Link
