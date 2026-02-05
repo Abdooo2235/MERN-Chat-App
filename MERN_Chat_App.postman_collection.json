@@ -1,0 +1,771 @@
+{
+	"info": {
+		"_postman_id": "mern-chat-app-collection",
+		"name": "MERN Chat App API",
+		"description": "Complete API collection for MERN Chat Application.\n\n## ⚠️ IMPORTANT: Testing Order\n\n**You MUST run requests in this order:**\n1. **Login** or **Sign Up** first (to get JWT cookie)\n2. **Get Users for Sidebar** (to populate target_user_id)\n3. Then test other endpoints\n\n## Authentication\nThis API uses **JWT tokens stored in cookies** for authentication. After login or signup, the JWT token is automatically set as an HTTP-only cookie.\n\n## Base URL\n- Production: `https://mern-chat-app-qimf.onrender.com`\n- Development: `http://localhost:5001`\n\n## Endpoints Overview\n\n### Authentication (`/api/auth`)\n- **POST** `/signup` - Register new user\n- **POST** `/login` - Login existing user\n- **POST** `/logout` - Logout user\n- **PUT** `/update-profile` - Update user profile picture (Protected)\n- **GET** `/check` - Check authentication status (Protected)\n\n### Messages (`/api/messages`)\n- **GET** `/users` - Get all users for sidebar (Protected)\n- **GET** `/:id` - Get messages with specific user (Protected)\n- **POST** `/send/:id` - Send message to user (Protected)",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "https://mern-chat-app-qimf.onrender.com",
+			"type": "string",
+			"description": "Base URL for the API server"
+		},
+		{
+			"key": "user_id",
+			"value": "",
+			"type": "string",
+			"description": "Current logged-in user ID (auto-populated after login)"
+		},
+		{
+			"key": "target_user_id",
+			"value": "",
+			"type": "string",
+			"description": "Target user ID for messaging (auto-populated from Get Users)"
+		}
+	],
+	"item": [
+		{
+			"name": "1. Authentication",
+			"description": "Authentication endpoints for user registration, login, logout, and profile management.\n\n**⚠️ Start here! Login or Sign Up first before testing other endpoints.**",
+			"item": [
+				{
+					"name": "1.1 Sign Up (New User)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"// Check if response is JSON",
+									"const contentType = pm.response.headers.get('Content-Type') || '';",
+									"const isJson = contentType.includes('application/json');",
+									"",
+									"if (pm.response.code === 201) {",
+									"    pm.test('✅ Status code is 201 - Signup successful', function () {",
+									"        pm.response.to.have.status(201);",
+									"    });",
+									"    ",
+									"    pm.test('✅ Response has user data', function () {",
+									"        const response = pm.response.json();",
+									"        pm.expect(response).to.have.property('_id');",
+									"        pm.expect(response).to.have.property('fullName');",
+									"        pm.expect(response).to.have.property('email');",
+									"        pm.collectionVariables.set('user_id', response._id);",
+									"        console.log('✅ User ID saved:', response._id);",
+									"    });",
+									"} else if (pm.response.code === 400) {",
+									"    pm.test('ℹ️ Signup failed (expected if email exists)', function () {",
+									"        if (isJson) {",
+									"            const response = pm.response.json();",
+									"            console.log('Message:', response.message);",
+									"        }",
+									"        pm.expect(pm.response.code).to.equal(400);",
+									"    });",
+									"} else {",
+									"    pm.test('⚠️ Unexpected status code: ' + pm.response.code, function () {",
+									"        console.log('Response:', pm.response.text());",
+									"    });",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						},
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"// Generate unique email for testing",
+									"const timestamp = Date.now();",
+									"pm.variables.set('test_email', `testuser${timestamp}@example.com`);",
+									"console.log('📧 Generated test email:', `testuser${timestamp}@example.com`);"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"fullName\": \"Test User\",\n    \"email\": \"{{test_email}}\",\n    \"password\": \"password123\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/api/auth/signup",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"auth",
+								"signup"
+							]
+						},
+						"description": "Register a new user account.\n\n**Request Body:**\n- `fullName` (string, required): User's full name\n- `email` (string, required): User's email address (must be unique)\n- `password` (string, required): Password (minimum 6 characters)\n\n**Response (201 Created):**\n- `_id`: User's unique identifier\n- `fullName`: User's full name\n- `email`: User's email\n- `profilePic`: Profile picture URL (empty by default)\n\n**Errors:**\n- 400: All fields are required\n- 400: Password must be at least 6 characters\n- 400: Email already exists\n- 500: Internal Server Error"
+					},
+					"response": []
+				},
+				{
+					"name": "1.2 Login (Existing User) ⭐ START HERE",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"const contentType = pm.response.headers.get('Content-Type') || '';",
+									"const isJson = contentType.includes('application/json');",
+									"",
+									"if (pm.response.code === 200) {",
+									"    pm.test('✅ Status code is 200 - Login successful', function () {",
+									"        pm.response.to.have.status(200);",
+									"    });",
+									"    ",
+									"    pm.test('✅ Response has user data', function () {",
+									"        const response = pm.response.json();",
+									"        pm.expect(response).to.have.property('_id');",
+									"        pm.expect(response).to.have.property('fullName');",
+									"        pm.expect(response).to.have.property('email');",
+									"        pm.collectionVariables.set('user_id', response._id);",
+									"        console.log('✅ Logged in as:', response.fullName);",
+									"        console.log('✅ User ID saved:', response._id);",
+									"    });",
+									"    ",
+									"    pm.test('✅ JWT cookie should be set', function () {",
+									"        // Note: HTTP-only cookies may not be visible in Postman",
+									"        console.log('ℹ️ JWT cookie is set by server (HTTP-only)');",
+									"    });",
+									"} else if (pm.response.code === 400) {",
+									"    pm.test('❌ Login failed - Invalid credentials', function () {",
+									"        if (isJson) {",
+									"            const response = pm.response.json();",
+									"            console.log('❌ Error:', response.message);",
+									"            console.log('💡 Tip: Make sure you have signed up first, or check email/password');",
+									"        }",
+									"        pm.expect(pm.response.code).to.equal(400);",
+									"    });",
+									"} else {",
+									"    pm.test('⚠️ Unexpected response: ' + pm.response.code, function () {",
+									"        console.log('Response:', pm.response.text());",
+									"    });",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"email\": \"test@example.com\",\n    \"password\": \"password123\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/api/auth/login",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"auth",
+								"login"
+							]
+						},
+						"description": "⭐ **START HERE** - Login with existing user credentials.\n\n**⚠️ IMPORTANT:** You must login first before testing protected endpoints!\n\n**Request Body:**\n- `email` (string, required): User's email address\n- `password` (string, required): User's password\n\n**Response (200 OK):**\n- `_id`: User's unique identifier\n- `fullName`: User's full name\n- `email`: User's email\n- `profilePic`: Profile picture URL\n\n**Errors:**\n- 400: Invalid credentials\n- 500: Internal Server Error\n\n**Note:** JWT token is set as HTTP-only cookie on successful login."
+					},
+					"response": []
+				},
+				{
+					"name": "1.3 Check Auth Status",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"const contentType = pm.response.headers.get('Content-Type') || '';",
+									"const isJson = contentType.includes('application/json');",
+									"",
+									"if (pm.response.code === 200) {",
+									"    pm.test('✅ Status code is 200 - Authenticated', function () {",
+									"        pm.response.to.have.status(200);",
+									"    });",
+									"    ",
+									"    pm.test('✅ Response has user data', function () {",
+									"        const response = pm.response.json();",
+									"        pm.expect(response).to.have.property('_id');",
+									"        pm.expect(response).to.have.property('fullName');",
+									"        console.log('✅ Authenticated as:', response.fullName);",
+									"    });",
+									"} else if (pm.response.code === 401) {",
+									"    pm.test('⚠️ Status 401 - Not authenticated (login first!)', function () {",
+									"        if (isJson) {",
+									"            const response = pm.response.json();",
+									"            console.log('❌ Error:', response.message);",
+									"        }",
+									"        console.log('💡 Tip: Run Login request first to get authenticated');",
+									"        pm.expect(pm.response.code).to.equal(401);",
+									"    });",
+									"} else {",
+									"    pm.test('⚠️ Unexpected response: ' + pm.response.code, function () {",
+									"        console.log('Response:', pm.response.text());",
+									"    });",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/auth/check",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"auth",
+								"check"
+							]
+						},
+						"description": "Check if the current user is authenticated.\n\n**Authentication Required:** Yes (JWT cookie)\n\n**Response (200 OK):**\n- `_id`: User's unique identifier\n- `fullName`: User's full name\n- `email`: User's email\n- `profilePic`: Profile picture URL\n\n**Errors:**\n- 401: Unauthorized - No Token Provided (login first!)\n- 401: Unauthorized - Invalid Token\n- 500: Internal Server Error"
+					},
+					"response": []
+				},
+				{
+					"name": "1.4 Update Profile Picture",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"const contentType = pm.response.headers.get('Content-Type') || '';",
+									"const isJson = contentType.includes('application/json');",
+									"",
+									"if (pm.response.code === 200) {",
+									"    pm.test('✅ Status code is 200 - Profile updated', function () {",
+									"        pm.response.to.have.status(200);",
+									"    });",
+									"    ",
+									"    pm.test('✅ Response has updated profilePic', function () {",
+									"        const response = pm.response.json();",
+									"        pm.expect(response).to.have.property('profilePic');",
+									"        console.log('✅ New profile pic URL:', response.profilePic);",
+									"    });",
+									"} else if (pm.response.code === 401) {",
+									"    pm.test('⚠️ Status 401 - Not authenticated', function () {",
+									"        console.log('💡 Tip: Run Login request first');",
+									"        pm.expect(pm.response.code).to.equal(401);",
+									"    });",
+									"} else if (pm.response.code === 400) {",
+									"    pm.test('ℹ️ Status 400 - Profile pic required', function () {",
+									"        if (isJson) {",
+									"            console.log('Message:', pm.response.json().message);",
+									"        }",
+									"    });",
+									"} else {",
+									"    pm.test('⚠️ Unexpected response: ' + pm.response.code, function () {",
+									"        console.log('Response:', pm.response.text());",
+									"    });",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"profilePic\": \"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/api/auth/update-profile",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"auth",
+								"update-profile"
+							]
+						},
+						"description": "Update the authenticated user's profile picture.\n\n**Authentication Required:** Yes (JWT cookie)\n\n**Request Body:**\n- `profilePic` (string, required): Base64 encoded image data\n\n**Response (200 OK):**\n- Returns updated user object with Cloudinary URL\n\n**Errors:**\n- 400: Profile pic is required\n- 401: Unauthorized - No Token Provided\n- 500: Internal server error"
+					},
+					"response": []
+				},
+				{
+					"name": "1.5 Logout",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"const contentType = pm.response.headers.get('Content-Type') || '';",
+									"const isJson = contentType.includes('application/json');",
+									"",
+									"if (pm.response.code === 200) {",
+									"    pm.test('✅ Status code is 200 - Logged out', function () {",
+									"        pm.response.to.have.status(200);",
+									"    });",
+									"    ",
+									"    pm.test('✅ Logout message received', function () {",
+									"        if (isJson) {",
+									"            const response = pm.response.json();",
+									"            pm.expect(response.message).to.eql('Logged out successfully');",
+									"            console.log('✅', response.message);",
+									"        }",
+									"    });",
+									"    ",
+									"    // Clear stored variables",
+									"    pm.collectionVariables.set('user_id', '');",
+									"    pm.collectionVariables.set('target_user_id', '');",
+									"} else {",
+									"    pm.test('⚠️ Unexpected response: ' + pm.response.code, function () {",
+									"        console.log('Response:', pm.response.text());",
+									"    });",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": ""
+						},
+						"url": {
+							"raw": "{{base_url}}/api/auth/logout",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"auth",
+								"logout"
+							]
+						},
+						"description": "Logout the current user by clearing the JWT cookie.\n\n**Response (200 OK):**\n- `message`: \"Logged out successfully\"\n\n**Note:** This clears the JWT cookie and you'll need to login again."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "2. Messages",
+			"description": "Message endpoints for real-time chat functionality.\n\n**⚠️ IMPORTANT:** All endpoints require authentication. Run Login first!",
+			"item": [
+				{
+					"name": "2.1 Get Users for Sidebar ⭐ RUN AFTER LOGIN",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"const contentType = pm.response.headers.get('Content-Type') || '';",
+									"const isJson = contentType.includes('application/json');",
+									"",
+									"if (pm.response.code === 200 && isJson) {",
+									"    pm.test('✅ Status code is 200', function () {",
+									"        pm.response.to.have.status(200);",
+									"    });",
+									"    ",
+									"    const response = pm.response.json();",
+									"    ",
+									"    pm.test('✅ Response is an array', function () {",
+									"        pm.expect(response).to.be.an('array');",
+									"        console.log('📋 Found', response.length, 'users');",
+									"    });",
+									"    ",
+									"    pm.test('✅ Users do not include password', function () {",
+									"        if (response.length > 0) {",
+									"            response.forEach(user => {",
+									"                pm.expect(user).to.not.have.property('password');",
+									"            });",
+									"        }",
+									"    });",
+									"    ",
+									"    // Auto-populate target_user_id for next requests",
+									"    if (response.length > 0) {",
+									"        pm.collectionVariables.set('target_user_id', response[0]._id);",
+									"        console.log('✅ target_user_id set to:', response[0]._id);",
+									"        console.log('👤 Target user:', response[0].fullName);",
+									"    } else {",
+									"        console.log('⚠️ No other users found. Create another user to test messaging.');",
+									"    }",
+									"} else if (pm.response.code === 401) {",
+									"    pm.test('⚠️ Status 401 - Not authenticated', function () {",
+									"        if (isJson) {",
+									"            console.log('❌ Error:', pm.response.json().message);",
+									"        }",
+									"        console.log('💡 Tip: Run Login request first!');",
+									"        pm.expect(pm.response.code).to.equal(401);",
+									"    });",
+									"} else {",
+									"    pm.test('⚠️ Unexpected response: ' + pm.response.code, function () {",
+									"        console.log('Content-Type:', contentType);",
+									"        console.log('Response:', pm.response.text().substring(0, 200));",
+									"    });",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/messages/users",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"messages",
+								"users"
+							]
+						},
+						"description": "⭐ **RUN THIS AFTER LOGIN** - Get all users except yourself for the chat sidebar.\n\nThis will automatically set the `target_user_id` variable for messaging tests.\n\n**Authentication Required:** Yes (JWT cookie)\n\n**Response (200 OK):**\nArray of user objects (excluding passwords)\n\n**Errors:**\n- 401: Unauthorized - Login first!\n- 500: Internal server error"
+					},
+					"response": []
+				},
+				{
+					"name": "2.2 Get Messages with User",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"const targetUserId = pm.collectionVariables.get('target_user_id');",
+									"if (!targetUserId) {",
+									"    console.log('⚠️ WARNING: target_user_id is empty!');",
+									"    console.log('💡 Tip: Run \"Get Users for Sidebar\" first to auto-populate this variable.');",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"const contentType = pm.response.headers.get('Content-Type') || '';",
+									"const isJson = contentType.includes('application/json');",
+									"const targetUserId = pm.collectionVariables.get('target_user_id');",
+									"",
+									"// Check if target_user_id is set",
+									"if (!targetUserId) {",
+									"    pm.test('⚠️ target_user_id not set - run Get Users first', function () {",
+									"        console.log('💡 Run \"Get Users for Sidebar\" request first');",
+									"        pm.expect.fail('target_user_id is empty');",
+									"    });",
+									"} else if (pm.response.code === 200 && isJson) {",
+									"    pm.test('✅ Status code is 200', function () {",
+									"        pm.response.to.have.status(200);",
+									"    });",
+									"    ",
+									"    const response = pm.response.json();",
+									"    ",
+									"    pm.test('✅ Response is an array', function () {",
+									"        pm.expect(response).to.be.an('array');",
+									"        console.log('💬 Found', response.length, 'messages');",
+									"    });",
+									"    ",
+									"    if (response.length > 0) {",
+									"        pm.test('✅ Messages have correct structure', function () {",
+									"            response.forEach(msg => {",
+									"                pm.expect(msg).to.have.property('_id');",
+									"                pm.expect(msg).to.have.property('senderId');",
+									"                pm.expect(msg).to.have.property('receiverId');",
+									"            });",
+									"        });",
+									"    }",
+									"} else if (pm.response.code === 401) {",
+									"    pm.test('⚠️ Status 401 - Not authenticated', function () {",
+									"        console.log('💡 Run Login request first!');",
+									"    });",
+									"} else {",
+									"    pm.test('⚠️ Unexpected response: ' + pm.response.code, function () {",
+									"        console.log('Response:', pm.response.text().substring(0, 200));",
+									"    });",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/messages/{{target_user_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"messages",
+								"{{target_user_id}}"
+							]
+						},
+						"description": "Get all messages between you and another user.\n\n**Prerequisites:**\n1. Login first\n2. Run \"Get Users for Sidebar\" to set target_user_id\n\n**Authentication Required:** Yes (JWT cookie)\n\n**URL Parameters:**\n- `id`: Target user's ID (auto-populated from Get Users)\n\n**Response (200 OK):**\nArray of message objects between the two users"
+					},
+					"response": []
+				},
+				{
+					"name": "2.3 Send Message (Text Only)",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"const targetUserId = pm.collectionVariables.get('target_user_id');",
+									"if (!targetUserId) {",
+									"    console.log('⚠️ WARNING: target_user_id is empty!');",
+									"    console.log('💡 Tip: Run \"Get Users for Sidebar\" first to auto-populate this variable.');",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"const contentType = pm.response.headers.get('Content-Type') || '';",
+									"const isJson = contentType.includes('application/json');",
+									"const targetUserId = pm.collectionVariables.get('target_user_id');",
+									"",
+									"// Check if target_user_id is set",
+									"if (!targetUserId) {",
+									"    pm.test('⚠️ target_user_id not set - run Get Users first', function () {",
+									"        console.log('💡 Run \"Get Users for Sidebar\" request first');",
+									"        pm.expect.fail('target_user_id is empty');",
+									"    });",
+									"} else if (pm.response.code === 201 && isJson) {",
+									"    pm.test('✅ Status code is 201 - Message sent', function () {",
+									"        pm.response.to.have.status(201);",
+									"    });",
+									"    ",
+									"    pm.test('✅ Response has message data', function () {",
+									"        const response = pm.response.json();",
+									"        pm.expect(response).to.have.property('_id');",
+									"        pm.expect(response).to.have.property('senderId');",
+									"        pm.expect(response).to.have.property('receiverId');",
+									"        pm.expect(response).to.have.property('text');",
+									"        console.log('✅ Message sent! ID:', response._id);",
+									"        console.log('📝 Text:', response.text);",
+									"    });",
+									"} else if (pm.response.code === 401) {",
+									"    pm.test('⚠️ Status 401 - Not authenticated', function () {",
+									"        console.log('💡 Run Login request first!');",
+									"    });",
+									"} else if (pm.response.code === 404) {",
+									"    pm.test('⚠️ Status 404 - Route not found', function () {",
+									"        console.log('💡 Make sure target_user_id is set correctly');",
+									"        console.log('Current target_user_id:', targetUserId);",
+									"    });",
+									"} else {",
+									"    pm.test('⚠️ Unexpected response: ' + pm.response.code, function () {",
+									"        console.log('Response:', pm.response.text().substring(0, 200));",
+									"    });",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"text\": \"Hello! This is a test message from Postman.\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/api/messages/send/{{target_user_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"messages",
+								"send",
+								"{{target_user_id}}"
+							]
+						},
+						"description": "Send a text message to another user.\n\n**Prerequisites:**\n1. Login first\n2. Run \"Get Users for Sidebar\" to set target_user_id\n\n**Authentication Required:** Yes (JWT cookie)\n\n**Request Body:**\n- `text` (string): Message content\n\n**Response (201 Created):**\n- Returns the created message object"
+					},
+					"response": []
+				},
+				{
+					"name": "2.4 Send Message (With Image)",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"const targetUserId = pm.collectionVariables.get('target_user_id');",
+									"if (!targetUserId) {",
+									"    console.log('⚠️ WARNING: target_user_id is empty!');",
+									"    console.log('💡 Tip: Run \"Get Users for Sidebar\" first to auto-populate this variable.');",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"const contentType = pm.response.headers.get('Content-Type') || '';",
+									"const isJson = contentType.includes('application/json');",
+									"const targetUserId = pm.collectionVariables.get('target_user_id');",
+									"",
+									"if (!targetUserId) {",
+									"    pm.test('⚠️ target_user_id not set - run Get Users first', function () {",
+									"        pm.expect.fail('target_user_id is empty');",
+									"    });",
+									"} else if (pm.response.code === 201 && isJson) {",
+									"    pm.test('✅ Status code is 201 - Message with image sent', function () {",
+									"        pm.response.to.have.status(201);",
+									"    });",
+									"    ",
+									"    pm.test('✅ Response has image URL', function () {",
+									"        const response = pm.response.json();",
+									"        pm.expect(response).to.have.property('image');",
+									"        console.log('✅ Image URL:', response.image);",
+									"    });",
+									"} else if (pm.response.code === 401) {",
+									"    pm.test('⚠️ Status 401 - Not authenticated', function () {",
+									"        console.log('💡 Run Login request first!');",
+									"    });",
+									"} else if (pm.response.code === 404) {",
+									"    pm.test('⚠️ Status 404 - Route not found', function () {",
+									"        console.log('💡 Run \"Get Users for Sidebar\" first to set target_user_id');",
+									"    });",
+									"} else {",
+									"    pm.test('⚠️ Unexpected response: ' + pm.response.code, function () {",
+									"        console.log('Response:', pm.response.text().substring(0, 200));",
+									"    });",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"text\": \"Check out this image!\",\n    \"image\": \"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/api/messages/send/{{target_user_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"messages",
+								"send",
+								"{{target_user_id}}"
+							]
+						},
+						"description": "Send a message with an image to another user.\n\n**Prerequisites:**\n1. Login first\n2. Run \"Get Users for Sidebar\" to set target_user_id\n\n**Request Body:**\n- `text` (string, optional): Caption\n- `image` (string): Base64 encoded image\n\n**Note:** Image is uploaded to Cloudinary"
+					},
+					"response": []
+				}
+			]
+		}
+	],
+	"auth": {
+		"type": "noauth"
+	},
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					"// Global test - Response time check",
+					"pm.test('Response time < 10s', function () {",
+					"    pm.expect(pm.response.responseTime).to.be.below(10000);",
+					"});"
+				]
+			}
+		}
+	]
+}
